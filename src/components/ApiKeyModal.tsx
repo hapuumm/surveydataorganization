@@ -95,7 +95,7 @@ export default function ApiKeyModal({ isOpen, onClose, onKeySaved }: ApiKeyModal
           data = JSON.parse(text);
         } catch (jsonErr) {
           console.error("JSON parsing error in test-key:", jsonErr, "Response text:", text);
-          throw new Error("서버와의 연결 테스트 중 일시적인 지연 또는 통신 오류가 발생했습니다. 입력하신 API Key가 'AIzaSy'로 시작하는 올바른 구글 Gemini API Key 형식이라면, 테스트 결과와 무관하게 오른쪽의 '적용 및 저장' 버튼을 눌러 바로 저장해 사용해 보세요!");
+          throw new Error("서버와의 연결 테스트 중 일시적인 지연 또는 통신 오류가 발생했습니다. 입력하신 API Key가 'AIzaSy' 또는 'AQ.'로 시작하는 올바른 구글 Gemini API Key 형식이라면, 테스트 결과와 무관하게 오른쪽의 '적용 및 저장' 버튼을 눌러 바로 저장해 사용해 보세요!");
         }
       } catch (fetchErr: any) {
         throw new Error(fetchErr?.message || "테스트 결과를 받아오는 도중 오류가 발생했습니다.");
@@ -157,7 +157,7 @@ export default function ApiKeyModal({ isOpen, onClose, onKeySaved }: ApiKeyModal
       const text = evt.target?.result as string;
       if (text) {
         const dec = decryptKey(text.trim());
-        if (dec && dec.startsWith("AIza")) { // Check simple structure match for Gemini keys
+        if (dec && (dec.startsWith("AIza") || dec.startsWith("AQ."))) { // Check simple structure match for Gemini keys
           setApiKey(dec);
           handleSaveToLocalStorage(dec);
           setTestStatus('success');
@@ -222,7 +222,7 @@ export default function ApiKeyModal({ isOpen, onClose, onKeySaved }: ApiKeyModal
               <div className="relative">
                 <input
                   type={showKey ? "text" : "password"}
-                  placeholder="AIzaSy..."
+                  placeholder="AIzaSy... 또는 AQ...."
                   value={apiKey}
                   onChange={(e) => {
                     setApiKey(e.target.value);

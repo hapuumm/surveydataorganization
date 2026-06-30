@@ -95,10 +95,11 @@ async function startServer() {
 
       // If all failed, analyze the last error
       const errMsg = lastError?.message || String(lastError);
+      // We only flag as explicitly invalid key if the Google API tells us so, otherwise we let them save it
       const isInvalidKey = errMsg.includes("API_KEY_INVALID") || 
                            errMsg.includes("API key not valid") || 
                            errMsg.toLowerCase().includes("key is invalid") ||
-                           lastError?.status === "INVALID_ARGUMENT";
+                           (errMsg.toLowerCase().includes("invalid_argument") && (errMsg.toLowerCase().includes("key") || errMsg.toLowerCase().includes("api_key")));
 
       if (isInvalidKey) {
         return res.status(200).json({
