@@ -327,15 +327,7 @@ export default function Dashboard() {
                 새 파일 올리기
               </button>
             )}
-            <a
-              href="https://ai.studio/build"
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs font-semibold text-slate-400 hover:text-slate-600 hidden sm:block"
-            >
-              Google AI Studio Build
-            </a>
-          </div>
+            </div>
         </div>
       </header>
 
