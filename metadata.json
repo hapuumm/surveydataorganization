@@ -1,0 +1,6 @@
+{
+  "name": "설문조사 PPT 표 생성기",
+  "description": "설문조사 엑셀 파일을 업로드하면 성별, 연령별로 크로스 집계하여 PPT 차트에 바로 붙여넣을 수 있는 데이터 표(CSV)를 자동 생성합니다.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
