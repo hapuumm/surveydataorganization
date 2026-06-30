@@ -38,90 +38,26 @@ async function startServer() {
     try {
       const client = getAiClient(req);
       if (!client) {
-        return res.status(200).json({ success: false, error: "API Key가 제공되지 않았습니다." });
+        return res.status(400).json({ error: "API Key가 제공되지 않았습니다." });
       }
 
-      // Try multiple models in sequence for testing
-      const testModels = ["gemini-2.5-flash", "gemini-2.0-flash"];
-      let testSuccess = false;
-      let lastError: any = null;
-
-      for (const model of testModels) {
-        try {
-          const response = await client.models.generateContent({
-            model: model,
-            contents: "Hello. Respond with one word: 'OK'",
-          });
-          if (response && response.text) {
-            testSuccess = true;
-            break;
-          }
-        } catch (err) {
-          lastError = err;
-          const errMsg = String(err);
-          // If it's a quota error, we consider the key valid but quota exceeded
-          const isQuota = errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("Quota exceeded");
-          if (isQuota) {
-            testSuccess = true;
-            break;
-          }
-          // If it's a 404, we continue to next model
-          const is404 = errMsg.includes("404") || errMsg.includes("NOT_FOUND");
-          if (is404) {
-            continue;
-          }
-          // For other errors, if it's explicitly invalid key, we stop
-          const isInvalid = errMsg.includes("API_KEY_INVALID") || errMsg.includes("API key not valid") || errMsg.toLowerCase().includes("key is invalid");
-          if (isInvalid) {
-            break;
-          }
-        }
-      }
-
-      if (testSuccess) {
-        const errMsg = lastError ? (lastError?.message || String(lastError)) : "";
-        const isQuotaExceeded = errMsg.includes("RESOURCE_EXHAUSTED") || 
-                                errMsg.includes("429") || 
-                                errMsg.includes("Quota exceeded");
-        if (isQuotaExceeded) {
-          return res.json({
-            success: true,
-            isQuotaExceeded: true,
-            message: "API Key 인증 자체는 성공했으나, 현재 사용 중인 API Key의 무료 호출 한도(Quota)가 초과되었습니다. API Key 자체는 올바르게 설정되었으므로 안심하고 저장하셔도 좋습니다. (약 1분 뒤에 사용량이 초기화됩니다.)"
-          });
-        }
-        return res.json({ success: true, message: "API Key 연결 테스트 성공!" });
-      }
-
-      // If all failed, analyze the last error
-      const errMsg = lastError?.message || String(lastError);
-      // We only flag as explicitly invalid key if the Google API tells us so, otherwise we let them save it
-      const isInvalidKey = errMsg.includes("API_KEY_INVALID") || 
-                           errMsg.includes("API key not valid") || 
-                           errMsg.toLowerCase().includes("key is invalid") ||
-                           (errMsg.toLowerCase().includes("invalid_argument") && (errMsg.toLowerCase().includes("key") || errMsg.toLowerCase().includes("api_key")));
-
-      if (isInvalidKey) {
-        return res.status(200).json({
-          success: false,
-          error: "유효하지 않은 API Key입니다. 입력 값을 다시 확인해 주세요.",
-          details: errMsg
-        });
-      }
-
-      // If it's not explicitly invalid (e.g. region error, other google api block)
-      return res.status(200).json({
-        success: true,
-        isQuotaExceeded: true,
-        message: `API Key 인증 자체는 시도되었으나, 구글 서비스 제한 또는 일시적인 호출 지연이 발생했습니다. (오류내용: ${errMsg.slice(0, 100)}) 키는 올바르게 설정되었으므로 그대로 저장 후 사용해 보세요.`
+      // Try a lightweight request to test the key
+      const response = await client.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: "Hello. Respond with one word: 'OK'",
       });
 
+      if (response && response.text) {
+        return res.json({ success: true, message: "API Key 연결 테스트 성공!" });
+      } else {
+        throw new Error("응답이 올바르지 않습니다.");
+      }
     } catch (err: any) {
-      const errMsg = err?.message || String(err);
-      return res.status(200).json({
+      console.error("API Key Test Failure:", err);
+      return res.status(400).json({
         success: false,
-        error: "API Key 연결 중 알 수 없는 오류 발생",
-        details: errMsg,
+        error: "API Key 인증 실패 또는 호출 오류",
+        details: err?.message || String(err),
       });
     }
   });
@@ -131,8 +67,7 @@ async function startServer() {
     try {
       const client = getAiClient(req);
       if (!client) {
-        return res.status(200).json({
-          success: false,
+        return res.status(401).json({
           error: "API Key가 설정되지 않았습니다. 우측 상단의 'API 설정' 버튼을 눌러 개인 API Key를 입력해 주세요.",
         });
       }
@@ -234,7 +169,7 @@ ${sampledAnswers.map((ans, idx) => `${idx + 1}. ${ans}`).join("\n")}
       };
 
       // Robust retry with model fallback
-      const modelsToTry = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"];
+      const modelsToTry = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-3.5-flash"];
       const maxRetriesPerModel = 2;
       let response: any = null;
       let lastError: any = null;
@@ -295,26 +230,10 @@ ${sampledAnswers.map((ans, idx) => `${idx + 1}. ${ans}`).join("\n")}
       const result = JSON.parse(responseText.trim());
       res.json(result);
     } catch (err: any) {
-      const errMsg = err?.message || String(err);
-      
-      const isQuotaExceeded = errMsg.includes("RESOURCE_EXHAUSTED") || 
-                              errMsg.includes("429") || 
-                              errMsg.includes("Quota exceeded") ||
-                              err?.status === "RESOURCE_EXHAUSTED" || 
-                              err?.code === 429;
-                              
-      let errorResponseMsg = "AI가 주관식 답변을 분석하는 도중 오류가 발생했습니다.";
-      if (isQuotaExceeded) {
-        console.log("AI Analysis Quota Exceeded (Rate limited)");
-        errorResponseMsg = "입력하신 무료 API Key의 호출 한도(Quota)가 초과되었습니다. 무료 티어의 분당 요청/토큰 제한 또는 일일 사용량 한도에 도달한 상태입니다. 약 1분 정도 후에 다시 요청하시면 정상 분석이 가능합니다.";
-      } else {
-        console.warn("AI Analysis Warning:", errMsg);
-      }
-      
-      res.status(200).json({
-        success: false,
-        error: errorResponseMsg,
-        details: errMsg,
+      console.error("AI Analysis Error:", err);
+      res.status(500).json({
+        error: "AI가 주관식 답변을 분석하는 도중 오류가 발생했습니다.",
+        details: err?.message || String(err),
       });
     }
   });

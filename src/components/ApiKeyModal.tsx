@@ -39,7 +39,7 @@ export const decryptKey = (encKey: string): string => {
 export default function ApiKeyModal({ isOpen, onClose, onKeySaved }: ApiKeyModalProps) {
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
-  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'warning' | 'failed'>('idle');
+  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'failed'>('idle');
   const [testMessage, setTestMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -85,30 +85,12 @@ export default function ApiKeyModal({ isOpen, onClose, onKeySaved }: ApiKeyModal
           'Content-Type': 'application/json',
           'x-api-key': apiKey.trim(),
         },
-        body: JSON.stringify({}),
       });
 
-      let data: any;
-      try {
-        const text = await response.text();
-        try {
-          data = JSON.parse(text);
-        } catch (jsonErr) {
-          console.error("JSON parsing error in test-key:", jsonErr, "Response text:", text);
-          throw new Error("서버와의 연결 테스트 중 일시적인 지연 또는 통신 오류가 발생했습니다. 입력하신 API Key가 'AIzaSy' 또는 'AQ.'로 시작하는 올바른 구글 Gemini API Key 형식이라면, 테스트 결과와 무관하게 오른쪽의 '적용 및 저장' 버튼을 눌러 바로 저장해 사용해 보세요!");
-        }
-      } catch (fetchErr: any) {
-        throw new Error(fetchErr?.message || "테스트 결과를 받아오는 도중 오류가 발생했습니다.");
-      }
-
+      const data = await response.json();
       if (response.ok && data.success) {
-        if (data.isQuotaExceeded) {
-          setTestStatus('warning');
-          setTestMessage(data.message || "API Key가 유효한 것으로 확인되었습니다! 다만, 현재 해당 API Key의 사용량 한도(Quota)가 초과되었습니다. 키는 로컬 브라우저에 정상 등록되었습니다. ⏳");
-        } else {
-          setTestStatus('success');
-          setTestMessage("연결에 성공했습니다! 입력한 API Key가 정상 작동합니다. 🎉");
-        }
+        setTestStatus('success');
+        setTestMessage("연결에 성공했습니다! 입력한 API Key가 정상 작동합니다. 🎉");
         // Auto save on successful test
         handleSaveToLocalStorage(apiKey);
       } else {
@@ -157,7 +139,7 @@ export default function ApiKeyModal({ isOpen, onClose, onKeySaved }: ApiKeyModal
       const text = evt.target?.result as string;
       if (text) {
         const dec = decryptKey(text.trim());
-        if (dec && (dec.startsWith("AIza") || dec.startsWith("AQ."))) { // Check simple structure match for Gemini keys
+        if (dec && dec.startsWith("AIza")) { // Check simple structure match for Gemini keys
           setApiKey(dec);
           handleSaveToLocalStorage(dec);
           setTestStatus('success');
@@ -222,7 +204,7 @@ export default function ApiKeyModal({ isOpen, onClose, onKeySaved }: ApiKeyModal
               <div className="relative">
                 <input
                   type={showKey ? "text" : "password"}
-                  placeholder="AIzaSy... 또는 AQ...."
+                  placeholder="AIzaSy..."
                   value={apiKey}
                   onChange={(e) => {
                     setApiKey(e.target.value);
@@ -281,13 +263,10 @@ export default function ApiKeyModal({ isOpen, onClose, onKeySaved }: ApiKeyModal
               <div className={`p-3 rounded-xl border text-xs font-semibold flex items-start gap-2.5 ${
                 testStatus === 'testing' ? 'bg-blue-50/60 border-blue-100 text-blue-700' :
                 testStatus === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                testStatus === 'warning' ? 'bg-amber-50 border-amber-100 text-amber-750' :
                 'bg-rose-50 border-rose-100 text-rose-700'
               }`}>
                 {testStatus === 'success' ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                ) : testStatus === 'warning' ? (
-                  <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 ) : testStatus === 'failed' ? (
                   <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                 ) : (

@@ -108,24 +108,8 @@ export default function TableViewer({
         }),
       });
 
-      let data: any;
-      try {
-        const text = await response.text();
-        try {
-          data = JSON.parse(text);
-        } catch (jsonErr) {
-          console.error("JSON parsing error:", jsonErr, "Response text:", text);
-          if (text.includes("502") || text.toLowerCase().includes("bad gateway") || text.includes("504") || text.includes("gateway timeout")) {
-            throw new Error("서버가 현재 리스타트 중이거나 일시적인 부하 상태입니다. 약 5~10초 후에 다시 'AI 분석' 버튼을 눌러주세요!");
-          }
-          const snippet = text.slice(0, 100) + (text.length > 100 ? "..." : "");
-          throw new Error(`서버에서 결과를 반환하는 중 통신 지연 또는 오류가 발생했습니다. (상태: ${response.status}, 내용: ${snippet}) 설정하신 API Key가 유효하고 활성화되어 있는지 확인해 주세요.`);
-        }
-      } catch (fetchErr: any) {
-        throw new Error(fetchErr?.message || "응답 데이터를 읽는 중 오류가 발생했습니다.");
-      }
-
-      if (!response.ok || data.success === false || data.error) {
+      const data = await response.json();
+      if (!response.ok) {
         throw new Error(data.error || 'AI 분석 중 오류가 발생했습니다.');
       }
 
