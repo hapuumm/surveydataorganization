@@ -108,8 +108,20 @@ export default function TableViewer({
         }),
       });
 
-      const data = await response.json();
-      if (!response.ok) {
+      let data: any;
+      try {
+        const text = await response.text();
+        try {
+          data = JSON.parse(text);
+        } catch (jsonErr) {
+          console.error("JSON parsing error:", jsonErr, "Response text:", text);
+          throw new Error("서버에서 올바르지 않은 응답이 반환되었습니다. API Key가 올바른지 확인해 주세요.");
+        }
+      } catch (fetchErr: any) {
+        throw new Error(fetchErr?.message || "응답 데이터를 읽는 중 오류가 발생했습니다.");
+      }
+
+      if (!response.ok || data.success === false || data.error) {
         throw new Error(data.error || 'AI 분석 중 오류가 발생했습니다.');
       }
 

@@ -87,7 +87,19 @@ export default function ApiKeyModal({ isOpen, onClose, onKeySaved }: ApiKeyModal
         },
       });
 
-      const data = await response.json();
+      let data: any;
+      try {
+        const text = await response.text();
+        try {
+          data = JSON.parse(text);
+        } catch (jsonErr) {
+          console.error("JSON parsing error in test-key:", jsonErr, "Response text:", text);
+          throw new Error("서버에서 올바르지 않은 응답이 반환되었습니다. 올바른 API Key 형식을 사용했는지 확인해 주세요.");
+        }
+      } catch (fetchErr: any) {
+        throw new Error(fetchErr?.message || "테스트 결과를 받아오는 도중 오류가 발생했습니다.");
+      }
+
       if (response.ok && data.success) {
         setTestStatus('success');
         setTestMessage("연결에 성공했습니다! 입력한 API Key가 정상 작동합니다. 🎉");

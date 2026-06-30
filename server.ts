@@ -38,7 +38,7 @@ async function startServer() {
     try {
       const client = getAiClient(req);
       if (!client) {
-        return res.status(400).json({ error: "API Key가 제공되지 않았습니다." });
+        return res.status(200).json({ success: false, error: "API Key가 제공되지 않았습니다." });
       }
 
       // Try a lightweight request to test the key
@@ -54,7 +54,7 @@ async function startServer() {
       }
     } catch (err: any) {
       console.error("API Key Test Failure:", err);
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         error: "API Key 인증 실패 또는 호출 오류",
         details: err?.message || String(err),
@@ -67,7 +67,8 @@ async function startServer() {
     try {
       const client = getAiClient(req);
       if (!client) {
-        return res.status(401).json({
+        return res.status(200).json({
+          success: false,
           error: "API Key가 설정되지 않았습니다. 우측 상단의 'API 설정' 버튼을 눌러 개인 API Key를 입력해 주세요.",
         });
       }
@@ -231,7 +232,8 @@ ${sampledAnswers.map((ans, idx) => `${idx + 1}. ${ans}`).join("\n")}
       res.json(result);
     } catch (err: any) {
       console.error("AI Analysis Error:", err);
-      res.status(500).json({
+      res.status(200).json({
+        success: false,
         error: "AI가 주관식 답변을 분석하는 도중 오류가 발생했습니다.",
         details: err?.message || String(err),
       });
