@@ -43,7 +43,7 @@ async function startServer() {
 
       // Try a lightweight request to test the key
       const response = await client.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-3.5-flash",
         contents: "Hello. Respond with one word: 'OK'",
       });
 
@@ -169,7 +169,7 @@ ${sampledAnswers.map((ans, idx) => `${idx + 1}. ${ans}`).join("\n")}
       };
 
       // Robust retry with model fallback
-      const modelsToTry = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-3.5-flash"];
+      const modelsToTry = ["gemini-3.5-flash", "gemini-3.1-pro-preview"];
       const maxRetriesPerModel = 2;
       let response: any = null;
       let lastError: any = null;

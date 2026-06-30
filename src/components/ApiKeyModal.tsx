@@ -87,7 +87,14 @@ export default function ApiKeyModal({ isOpen, onClose, onKeySaved }: ApiKeyModal
         },
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error(`서버 응답 오류 (HTML): ${text.slice(0, 150)}`);
+      }
+
       if (response.ok && data.success) {
         setTestStatus('success');
         setTestMessage("연결에 성공했습니다! 입력한 API Key가 정상 작동합니다. 🎉");

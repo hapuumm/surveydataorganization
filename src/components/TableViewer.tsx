@@ -108,7 +108,14 @@ export default function TableViewer({
         }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error(`서버 응답 오류 (HTML): ${text.slice(0, 150)}`);
+      }
+
       if (!response.ok) {
         throw new Error(data.error || 'AI 분석 중 오류가 발생했습니다.');
       }
