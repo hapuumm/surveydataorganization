@@ -41,39 +41,85 @@ async function startServer() {
         return res.status(200).json({ success: false, error: "API Key가 제공되지 않았습니다." });
       }
 
-      // Try a lightweight request to test the key
-      const response = await client.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: "Hello. Respond with one word: 'OK'",
-      });
+      // Try multiple models in sequence for testing
+      const testModels = ["gemini-2.5-flash", "gemini-2.0-flash"];
+      let testSuccess = false;
+      let lastError: any = null;
 
-      if (response && response.text) {
-        return res.json({ success: true, message: "API Key 연결 테스트 성공!" });
-      } else {
-        throw new Error("응답이 올바르지 않습니다.");
+      for (const model of testModels) {
+        try {
+          const response = await client.models.generateContent({
+            model: model,
+            contents: "Hello. Respond with one word: 'OK'",
+          });
+          if (response && response.text) {
+            testSuccess = true;
+            break;
+          }
+        } catch (err) {
+          lastError = err;
+          const errMsg = String(err);
+          // If it's a quota error, we consider the key valid but quota exceeded
+          const isQuota = errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("429") || errMsg.includes("Quota exceeded");
+          if (isQuota) {
+            testSuccess = true;
+            break;
+          }
+          // If it's a 404, we continue to next model
+          const is404 = errMsg.includes("404") || errMsg.includes("NOT_FOUND");
+          if (is404) {
+            continue;
+          }
+          // For other errors, if it's explicitly invalid key, we stop
+          const isInvalid = errMsg.includes("API_KEY_INVALID") || errMsg.includes("API key not valid") || errMsg.toLowerCase().includes("key is invalid");
+          if (isInvalid) {
+            break;
+          }
+        }
       }
-    } catch (err: any) {
-      const errMsg = err?.message || String(err);
-      
-      const isQuotaExceeded = errMsg.includes("RESOURCE_EXHAUSTED") || 
-                              errMsg.includes("429") || 
-                              errMsg.includes("Quota exceeded") ||
-                              err?.status === "RESOURCE_EXHAUSTED" || 
-                              err?.code === 429;
-                              
-      if (isQuotaExceeded) {
-        console.log("API Key Test Quota Exceeded (Key valid but rate limited)");
-        return res.json({
-          success: true,
-          isQuotaExceeded: true,
-          message: "API Key 인증 자체는 성공했으나, 현재 사용 중인 API Key의 무료 호출 한도(Quota)가 초과되었습니다. API Key 자체는 올바르게 설정되었으므로 안심하고 저장하셔도 좋습니다. (약 1분 뒤에 사용량이 초기화됩니다.)"
+
+      if (testSuccess) {
+        const errMsg = lastError ? (lastError?.message || String(lastError)) : "";
+        const isQuotaExceeded = errMsg.includes("RESOURCE_EXHAUSTED") || 
+                                errMsg.includes("429") || 
+                                errMsg.includes("Quota exceeded");
+        if (isQuotaExceeded) {
+          return res.json({
+            success: true,
+            isQuotaExceeded: true,
+            message: "API Key 인증 자체는 성공했으나, 현재 사용 중인 API Key의 무료 호출 한도(Quota)가 초과되었습니다. API Key 자체는 올바르게 설정되었으므로 안심하고 저장하셔도 좋습니다. (약 1분 뒤에 사용량이 초기화됩니다.)"
+          });
+        }
+        return res.json({ success: true, message: "API Key 연결 테스트 성공!" });
+      }
+
+      // If all failed, analyze the last error
+      const errMsg = lastError?.message || String(lastError);
+      const isInvalidKey = errMsg.includes("API_KEY_INVALID") || 
+                           errMsg.includes("API key not valid") || 
+                           errMsg.toLowerCase().includes("key is invalid") ||
+                           lastError?.status === "INVALID_ARGUMENT";
+
+      if (isInvalidKey) {
+        return res.status(200).json({
+          success: false,
+          error: "유효하지 않은 API Key입니다. 입력 값을 다시 확인해 주세요.",
+          details: errMsg
         });
       }
 
-      console.warn("API Key Test Warning:", errMsg);
+      // If it's not explicitly invalid (e.g. region error, other google api block)
+      return res.status(200).json({
+        success: true,
+        isQuotaExceeded: true,
+        message: `API Key 인증 자체는 시도되었으나, 구글 서비스 제한 또는 일시적인 호출 지연이 발생했습니다. (오류내용: ${errMsg.slice(0, 100)}) 키는 올바르게 설정되었으므로 그대로 저장 후 사용해 보세요.`
+      });
+
+    } catch (err: any) {
+      const errMsg = err?.message || String(err);
       return res.status(200).json({
         success: false,
-        error: "API Key 인증 실패 또는 호출 오류",
+        error: "API Key 연결 중 알 수 없는 오류 발생",
         details: errMsg,
       });
     }

@@ -94,7 +94,8 @@ export default function ApiKeyModal({ isOpen, onClose, onKeySaved }: ApiKeyModal
           data = JSON.parse(text);
         } catch (jsonErr) {
           console.error("JSON parsing error in test-key:", jsonErr, "Response text:", text);
-          throw new Error("서버에서 올바르지 않은 응답이 반환되었습니다. 올바른 API Key 형식을 사용했는지 확인해 주세요.");
+          const snippet = text.slice(0, 150) + (text.length > 150 ? "..." : "");
+          throw new Error(`서버에서 올바르지 않은 응답이 반환되었습니다. (응답내용: ${snippet}) 올바른 API Key 형식을 사용했는지 확인해 주세요.`);
         }
       } catch (fetchErr: any) {
         throw new Error(fetchErr?.message || "테스트 결과를 받아오는 도중 오류가 발생했습니다.");

@@ -115,7 +115,8 @@ export default function TableViewer({
           data = JSON.parse(text);
         } catch (jsonErr) {
           console.error("JSON parsing error:", jsonErr, "Response text:", text);
-          throw new Error("서버에서 올바르지 않은 응답이 반환되었습니다. API Key가 올바른지 확인해 주세요.");
+          const snippet = text.slice(0, 150) + (text.length > 150 ? "..." : "");
+          throw new Error(`서버에서 올바르지 않은 응답이 반환되었습니다. (응답내용: ${snippet}) API Key가 올바른지 확인해 주세요.`);
         }
       } catch (fetchErr: any) {
         throw new Error(fetchErr?.message || "응답 데이터를 읽는 중 오류가 발생했습니다.");
